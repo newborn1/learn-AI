@@ -9,6 +9,7 @@ dataArray = np.array(data)#一般情况不要加dtype
 dataTensor = torch.from_numpy(dataArray)
 dataToArray = dataTensor.numpy()
 
+
 print(
     "\nnumpy:",dataArray,
     "\ntorch:",dataTensor,
