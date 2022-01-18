@@ -1,8 +1,9 @@
+import time
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import torch.utils.data as Data
-
+#run time : 74.8222161s
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"#有多个gpu才有用
@@ -36,6 +37,8 @@ class TextNet(nn.Module):
 
 
 if __name__ == '__main__':
+    t = time.perf_counter()#查看运行时间
+
     LR = 0.2
     #定义四个相同的网络结构
     net_SGD = TextNet()
@@ -60,15 +63,15 @@ if __name__ == '__main__':
     losses_his = [[],[],[],[]] #记录训练时不同神经网络的 loss
 
     #建立数据集,并用转化为TensorSet,同时打包再DataLoader中处理
-    x = torch.linspace(0,100,200).reshape(-1,1)
+    x = torch.linspace(-1,1,1000).reshape(-1,1)#设为0-100则要规范化
     y = x*x + 0.1*torch.normal(torch.zeros(*x.size()))#啥意思？？？
 
     x,y = x.to(device=device),y.to(device=device)#gpu
     print(x.device)#查看数据所在的设备
 
     dataset = Data.TensorDataset(x,y)
-    BATCH_SIZE = 50
-    TIMES = 100 #训练次数
+    BATCH_SIZE = 32
+    TIMES = 12 #训练次数
     loader = Data.DataLoader(
         dataset=dataset,
         batch_size=BATCH_SIZE,
@@ -79,21 +82,21 @@ if __name__ == '__main__':
 
     loss_func = torch.nn.MSELoss()
 
-    for times in range(TIMES):
-#这里涉及进程问题：Exception has occurred: RuntimeError cuda runtime error (801) : operation not supported at ..\torch/csrc/generic/StorageSharing.cpp:249。要么换成单线程要么在子线程才将模型放在gpu里
-        for step,(batch_x,batch_y) in enumerate(loader):
-            # print(batch_x.device,batch_y.device)
-            for net,opt,l_his in zip(nets,opts,losses_his):
+    # for times in range(TIMES):
+    # #这里涉及进程问题：Exception has occurred: RuntimeError cuda runtime error (801) : operation not supported at ..\torch/csrc/generic/StorageSharing.cpp:249。要么换成单线程要么在子线程才将模型放在gpu里
+    #     for step,(batch_x,batch_y) in enumerate(loader):
+    #         # print(batch_x.device,batch_y.device)
+    #         for net,opt,l_his in zip(nets,opts,losses_his):
 
-                # batch_x, batch_y= batch_x.to(device),batch_y.to(device)#gpu,不用加，GPU计算后的数据仍然存放在GPU里？
+    #             # batch_x, batch_y= batch_x.to(device),batch_y.to(device)#gpu,不用加，GPU计算后的数据仍然存放在GPU里？
                 
-                output = net(batch_x)
-                output = output.to(device)
-                loss = loss_func(output,batch_y)
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-                l_his.append(loss.data)
+    #             output = net(batch_x)
+    #             output = output.to(device)
+    #             loss = loss_func(output,batch_y)
+    #             opt.zero_grad()
+    #             loss.backward()
+    #             opt.step()
+    #             l_his.append(loss.data)
 
 
     #这是边训练边画图
@@ -109,16 +112,22 @@ if __name__ == '__main__':
     ax.set_ylabel('Loss')
 
     for times in range(TIMES):
+    #这里涉及进程问题：Exception has occurred: RuntimeError cuda runtime error (801) : operation not supported at ..\torch/csrc/generic/StorageSharing.cpp:249。要么换成单线程要么在子线程才将模型放在gpu里
         for step,(batch_x,batch_y) in enumerate(loader):
+            # print(batch_x.device,batch_y.device)
             ax.cla()#四条画好了才除去
-            for net,opt,l_his,color,labell in zip(nets,opts,losses_his,colors,labels):
+            for net,opt,l_his,color in zip(nets,opts,losses_his,colors):
+
+                # batch_x, batch_y= batch_x.to(device),batch_y.to(device)#gpu,不用加，GPU计算后的数据仍然存放在GPU里？
+                
                 output = net(batch_x)
-                output.to(device)#important
+                output = output.to(device)#important
                 loss = loss_func(output,batch_y)
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
                 loss = loss.cpu()
+                # print(loss.data)
                 l_his.append(loss)
 
                 ax0 = range(len(l_his))
@@ -126,17 +135,18 @@ if __name__ == '__main__':
                 # l_his[i] = l_his[i].data.cpu().numpy()#不是data()，loss.data放GPU上,要转化为CPU供plot用，要转化为 numpy()，否则会出现:Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead.
                 ax.plot(
                     ax0,
-                    torch.tensor(l_his).cpu().data.numpy(),
+                    torch.tensor(l_his).cpu().data.numpy(),#重要
                     c=color,
-                    label=labell
+                    # label = label#在这里设无效
                 )#本来就放在CPU上，不需要转,并且只有tensor类型的数据才能和device有关系
 
             # ax.set_xlim(0,int(TIMES*200/BATCH_SIZE))
             ax.set_xlabel('Times')
-            # ax.set_ylim(0.00,0.25)
+            ax.set_ylim(0.000,0.200)
             ax.set_ylabel('Loss')
 
-            ax.legend('best')
+            ax.legend(labels,loc='best')#要在这里设
             plt.pause(0.1)
     
+    print('运行时间是 %s s'%(time.perf_counter()-t))
     plt.show()
