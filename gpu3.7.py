@@ -23,6 +23,8 @@ print(sys.version)
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # print(device)#打印出gpu才进行运行
 
+torch.manual_seed(1)    # reproducible
+
 class TextNet(nn.Module):
     def __init__(self,in_features=1,n_hidden=10,out_features=1) -> None:
         super(TextNet,self).__init__()
