@@ -1,9 +1,7 @@
-from cProfile import label
 import os
-from random import shuffle
-from turtle import forward
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
+#run time 484.2945112s
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,6 +23,7 @@ class TextNet(nn.Module):
 
 
 if __name__ == '__main__':
+    t = time.perf_counter()#查看运行时间
     LR = 0.2
     #定义四个相同的网络结构
     net_SGD = TextNet()
@@ -45,12 +44,12 @@ if __name__ == '__main__':
     losses_his = [[],[],[],[]] #记录训练时不同神经网络的 loss
 
     #建立数据集,并用转化为TensorSet,同时打包再DataLoader中处理
-    x = torch.linspace(0,100,200).reshape(-1,1)
+    x = torch.linspace(-1,1,200).reshape(-1,1)
     y = x*x + 0.1*torch.normal(torch.zeros(*x.size()))#啥意思？？？
 
     dataset = Data.TensorDataset(x,y)
     BATCH_SIZE = 50
-    TIMES = 10#训练次数
+    TIMES = 100#训练次数
     loader = Data.DataLoader(
         dataset=dataset,
         batch_size=BATCH_SIZE,
@@ -59,17 +58,6 @@ if __name__ == '__main__':
     )
 
     loss_func = torch.nn.MSELoss()
-
-    for times in range(TIMES):
-        for step,(batch_x,batch_y) in enumerate(loader):
-            for net,opt,l_his in zip(nets,opts,losses_his):
-                output = net(batch_x)
-                loss = loss_func(output,batch_y)
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-                l_his.append(loss.data.numpy())
-
 
     #这是边训练边画图
     fig,ax = plt.subplots(1,1,figsize=(10,6))
@@ -86,7 +74,7 @@ if __name__ == '__main__':
     for times in range(TIMES):
         for step,(batch_x,batch_y) in enumerate(loader):
             ax.cla()#四条画好了才除去
-            for net,opt,l_his,color,labell in zip(nets,opts,losses_his,colors,labels):
+            for net,opt,l_his,color in zip(nets,opts,losses_his,colors):
                 output = net(batch_x)
                 loss = loss_func(output,batch_y)
                 opt.zero_grad()
@@ -95,21 +83,32 @@ if __name__ == '__main__':
                 l_his.append(loss.data.numpy())
 
                 ax0 = range(len(l_his))
-                ax.plot(ax0,l_his,c=color,label=labell)
+                ax.plot(ax0,l_his,c=color)
 
             # ax.set_xlim(0,int(TIMES*200/BATCH_SIZE))
             ax.set_xlabel('Times')
-            # ax.set_ylim(0.00,0.25)
+            ax.set_ylim(0.06,0.60)
             ax.set_ylabel('Loss')
 
-            ax.legend('best')
+            ax.legend(labels,loc='best')
             plt.pause(0.1)
     
+    print('运行时间是 %s s'%(time.perf_counter()-t))
     plt.show()
 
     
 """
-    #画图
+    #画图训练分开
+
+    for times in range(TIMES):
+        for step,(batch_x,batch_y) in enumerate(loader):
+            for net,opt,l_his in zip(nets,opts,losses_his):
+                output = net(batch_x)
+                loss = loss_func(output,batch_y)
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+                l_his.append(loss.data.numpy())
     fig,ax = plt.subplots(1,1,figsize=(10,6))
 
     ax0 = range(TIMES*200/BATCH_SIZE)#200是总体样本总数
