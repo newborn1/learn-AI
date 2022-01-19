@@ -2,7 +2,6 @@
 
 # https://blog.csdn.net/weixin_43826681/article/details/109776079
 import os
-from pickletools import optimize
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"#有多个gpu才有用
 os.environ["CUDA_VISIBLE_DEVICES"]='0'#有多个gpu才有用,选哪一个
